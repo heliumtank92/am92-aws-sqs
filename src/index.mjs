@@ -141,7 +141,7 @@ export default class SqsSdk {
       const changeMessageVisibilityProps = { ...Message, VisibilityTimeout: visibilityTimeout }
       await this.#changeMessageVisibility(changeMessageVisibilityProps)
     } else {
-      await onRetryReject(Message).catch()
+      await onRetryReject(Message).catch(() => undefined)
       await this.#deleteMessage(Message).catch(error => {
         console.error(`[${SERVICE} AwsSqs] Error Deleting Message:`, { Message, error })
       })
