@@ -1,101 +1,38 @@
-import {
-  SQSClient,
-  SendMessageCommand,
-  ReceiveMessageCommand,
-  DeleteMessageCommand,
-  ChangeMessageVisibilityCommand
-} from '@aws-sdk/client-sqs'
+import AwsSqs from './AwsSqs.mjs'
 import { CronJob } from 'cron'
-
-import getReceiveOptions from '../helpers/getReceiveOptions.mjs'
-import SqsError from '../SqsError.mjs'
 
 import CONFIG, { SERVICE } from '../CONFIG.mjs'
 import DEFAULT_HANDLERS from '../helpers/DEFAULT_HANDLERS.mjs'
 
-export default class SqsSdk {
+export default class SqsSdk extends AwsSqs {
   constructor (config = CONFIG, handlers = DEFAULT_HANDLERS) {
-    this.config = { ...CONFIG, ...config }
-    const { CONNECTION_CONFIG } = this.config
+    super(config)
 
-    this.client = new SQSClient(CONNECTION_CONFIG)
     this.handlers = { ...DEFAULT_HANDLERS, ...handlers }
 
+    // Method Hard-binding
     this.send = this.send.bind(this)
     this.startProcessing = this.startProcessing.bind(this)
   }
 
   async send (messageBody = '', options) {
     const sendProps = { MessageBody: messageBody, ...options }
-    const data = await this.#sendMessage(sendProps)
+    const data = await this._sendMessage(sendProps)
     return data
   }
 
   startProcessing () {
-    const cronJob = this.#createCronJob()
+    const cronJob = this._createCronJob()
     return cronJob
   }
 
-  async #sendMessage (attrs = {}) {
-    try {
-      const { client, config } = this
-
-      const params = { ...attrs, QueueUrl: config.QUEUE_URL }
-      const command = new SendMessageCommand(params)
-      const response = await client.send(command)
-
-      const { $metadata, ...data } = response
-      return data
-    } catch (error) {
-      throw new SqsError(error)
-    }
-  }
-
-  async #receiveMessages (attrs = {}) {
-    try {
-      const { client, config } = this
-      const receiveOptions = getReceiveOptions(config.RECEIVE_OPTIONS)
-
-      const params = { QueueUrl: config.QUEUE_URL, ...receiveOptions }
-      const command = new ReceiveMessageCommand(params)
-      const response = await client.send(command)
-
-      const { Messages } = response
-      return Messages
-    } catch (error) {
-      throw new SqsError(error)
-    }
-  }
-
-  async #deleteMessage (attrs = {}) {
-    try {
-      const { client, config } = this
-      const params = { ...attrs, QueueUrl: config.QUEUE_URL }
-      const command = new DeleteMessageCommand(params)
-      await client.send(command)
-    } catch (error) {
-      throw new SqsError(error)
-    }
-  }
-
-  async #changeMessageVisibility (attrs = {}) {
-    try {
-      const { client, config } = this
-      const params = { ...attrs, QueueUrl: config.QUEUE_URL }
-      const command = new ChangeMessageVisibilityCommand(params)
-      await client.send(command)
-    } catch (error) {
-      throw new SqsError(error)
-    }
-  }
-
-  #createCronJob () {
+  _createCronJob = () => {
     const { POLL_CRON_TIME, POLL_CRON_TIMEZONE } = this.config
     const cronOptions = {
       cronTime: POLL_CRON_TIME,
       timezone: POLL_CRON_TIMEZONE,
       start: true,
-      onTick: this.#onTick,
+      onTick: this._onTick,
       context: true,
       runOnInit: false
     }
@@ -104,34 +41,34 @@ export default class SqsSdk {
     return cronJob
   }
 
-  async #onTick () {
+  _onTick = async () => {
     try {
-      const Messages = await this.#receiveMessages()
-      await this.#processMessages(Messages)
+      const Messages = await this._receiveMessages()
+      await this._processMessages(Messages)
     } catch (error) {
       console.error(`[${SERVICE} AwsSqs] Error Receiving Messages:`, error)
     }
   }
 
-  async #processMessages (Messages = []) {
-    const promises = Messages.map(this.#processMessage)
+  _processMessages = async (Messages = []) => {
+    const promises = Messages.map(this._processMessage)
     await Promise.allSettled(promises)
   }
 
-  async #processMessage (Message = {}) {
+  _processMessage = async (Message = {}) => {
     const { processMessage } = this.handlers
 
     try {
       await processMessage(Message)
-      await this.#deleteMessage(Message).catch(error => {
+      await this._deleteMessage(Message).catch(error => {
         console.error(`[${SERVICE} AwsSqs] Error Deleting Message:`, { Message, error })
       })
     } catch (error) {
-      this.#handleProcessMessageFailure(error, Message)
+      this._handleProcessMessageFailure(error, Message)
     }
   }
 
-  async #handleProcessMessageFailure (error, Message = {}) {
+  _handleProcessMessageFailure = async (error, Message = {}) => {
     const { shouldRetry, onRetryReject } = this.handlers
 
     const { retry = false, visibilityTimeout = 0 } = await shouldRetry(error, Message).catch(error => {
@@ -141,10 +78,10 @@ export default class SqsSdk {
 
     if (retry) {
       const changeMessageVisibilityProps = { ...Message, VisibilityTimeout: visibilityTimeout }
-      await this.#changeMessageVisibility(changeMessageVisibilityProps)
+      await this._changeMessageVisibility(changeMessageVisibilityProps)
     } else {
       await onRetryReject(Message).catch(() => undefined)
-      await this.#deleteMessage(Message).catch(error => {
+      await this._deleteMessage(Message).catch(error => {
         console.error(`[${SERVICE} AwsSqs] Error Deleting Message:`, { Message, error })
       })
     }

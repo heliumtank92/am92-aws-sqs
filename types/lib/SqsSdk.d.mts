@@ -1,4 +1,4 @@
-export default class SqsSdk {
+export default class SqsSdk extends AwsSqs {
     constructor(config?: {
         CONNECTION_CONFIG: {
             region: string;
@@ -21,22 +21,6 @@ export default class SqsSdk {
         }>;
         onRetryReject: (Message?: {}) => Promise<any>;
     });
-    config: {
-        CONNECTION_CONFIG: {
-            region: string;
-        };
-        QUEUE_URL: string;
-        POLL_CRON_TIME: string;
-        POLL_CRON_TIMEZONE: string;
-        RECEIVE_OPTIONS: {
-            ATTRIBUTE_NAMES: string[];
-            MAX_NUMBER_OF_MESSAGES: string | number;
-            MESSAGE_ATTRIBUTE_NAMES: string[];
-            VISIBILITY_TIMEOUT: string | number;
-            WAIT_TIME_SECONDS: string | number;
-        };
-    };
-    client: SQSClient;
     handlers: {
         processMessage: (Message?: {}) => Promise<any>;
         shouldRetry: (_error: any, Message?: {}) => Promise<{
@@ -53,7 +37,11 @@ export default class SqsSdk {
         SequenceNumber?: string;
     }>;
     startProcessing(): CronJob;
-    #private;
+    _createCronJob: () => CronJob;
+    _onTick: () => Promise<void>;
+    _processMessages: (Messages?: any[]) => Promise<void>;
+    _processMessage: (Message?: {}) => Promise<void>;
+    _handleProcessMessageFailure: (error: any, Message?: {}) => Promise<void>;
 }
-import { SQSClient } from "@aws-sdk/client-sqs/dist-types/SQSClient.js";
+import AwsSqs from "./AwsSqs.mjs";
 import { CronJob } from "cron";
