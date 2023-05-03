@@ -1,0 +1,57 @@
+{
+  "name": "@am92/aws-sqs",
+  "version": "1.2.0",
+  "description": "AWS SQS SDK",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.mts",
+      "import": "./src/index.mjs"
+    }
+  },
+  "types": "./types/index.d.mts",
+  "module": "./src/index.mjs",
+  "main": "./src/index.mjs",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.287.0",
+    "cron": "^2.2.0",
+    "nanoid": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/cron": "^2.0.0",
+    "@types/node": "^18.14.6"
+  },
+  "scripts": {
+    "test": "echo 'Error: no test specified'",
+    "generate:types": "rm -rf types && npx -p typescript tsc",
+    "preversion": "pnpm test",
+    "version": "echo 'Versioning'",
+    "postversion": "git push && git push --tags && npm run publish:pkg",
+    "publish:pkg": "npm publish"
+  },
+  "repository": "git@github.com:heliumtank92/am92-aws-sqs.git",
+  "homepage": "https://github.com/heliumtank92/am92-aws-sqs#readme",
+  "contributors": [
+    {
+      "name": "Ankit Gandhi",
+      "email": "ankitgandhi452@gmail.com",
+      "url": "https://github.com/ankitgandhi452"
+    },
+    {
+      "name": "Mehul Agarwal",
+      "email": "agarwalmehul92@gmail.com",
+      "url": "https://github.com/agarwalmehul"
+    }
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "aws",
+    "aws sqs",
+    "queue",
+    "fifo",
+    "standard queue"
+  ]
+}
