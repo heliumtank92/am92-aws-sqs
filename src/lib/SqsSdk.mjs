@@ -42,11 +42,21 @@ export default class SqsSdk extends AwsSqs {
   }
 
   _onTick = async () => {
+    const { shouldReceiveMessages } = this.handlers
     try {
+      const receiveMessages = await shouldReceiveMessages().catch(error => {
+        console.error(`[${SERVICE} AwsSqs] Error in handlers.shouldReceiveMessages`, { error })
+        return false
+      })
+
+      if (!receiveMessages) {
+        console.warn(`[${SERVICE} AwsSqs] Receiving Messages Bypassed`)
+      }
+
       const Messages = await this._receiveMessages()
       await this._processMessages(Messages)
     } catch (error) {
-      console.error(`[${SERVICE} AwsSqs] Error Receiving Messages:`, error)
+      console.error(`[${SERVICE} AwsSqs] Error Receiving Messages`, error)
     }
   }
 
@@ -61,7 +71,7 @@ export default class SqsSdk extends AwsSqs {
     try {
       await processMessage(Message)
       await this._deleteMessage(Message).catch(error => {
-        console.error(`[${SERVICE} AwsSqs] Error Deleting Message:`, { Message, error })
+        console.error(`[${SERVICE} AwsSqs] Error Deleting Message`, { Message, error })
       })
     } catch (error) {
       this._handleProcessMessageFailure(error, Message)
@@ -72,7 +82,7 @@ export default class SqsSdk extends AwsSqs {
     const { shouldRetry, onRetryReject } = this.handlers
 
     const { retry = false, visibilityTimeout = 0 } = await shouldRetry(error, Message).catch(error => {
-      console.error(`[${SERVICE} AwsSqs] Error in  shouldRetry:`, { Message, error })
+      console.error(`[${SERVICE} AwsSqs] Error in handlers.shouldRetry`, { Message, error })
       return {}
     })
 
@@ -80,9 +90,11 @@ export default class SqsSdk extends AwsSqs {
       const changeMessageVisibilityProps = { ...Message, VisibilityTimeout: visibilityTimeout }
       await this._changeMessageVisibility(changeMessageVisibilityProps)
     } else {
-      await onRetryReject(Message).catch(() => undefined)
+      await onRetryReject(Message).catch(error => {
+        console.error(`[${SERVICE} AwsSqs] Error in handlers.onRetryReject`, { Message, error })
+      })
       await this._deleteMessage(Message).catch(error => {
-        console.error(`[${SERVICE} AwsSqs] Error Deleting Message:`, { Message, error })
+        console.error(`[${SERVICE} AwsSqs] Error Deleting Message`, { Message, error })
       })
     }
   }

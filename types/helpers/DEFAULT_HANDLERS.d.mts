@@ -6,4 +6,5 @@ declare namespace DEFAULT_HANDLERS {
         visibilityTimeout: number;
     }>;
     function onRetryReject(Message?: {}): Promise<any>;
+    function shouldReceiveMessages(Message?: {}): Promise<boolean>;
 }

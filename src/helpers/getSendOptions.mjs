@@ -4,7 +4,7 @@ export function getFifoSendOptions (options = {}) {
   const sendOptions = {
     MessageAttributes: options.messageAttributes || [],
     MessageDeduplicationId: options.messageDeduplicationId || nanoid(),
-    MessageGroupId: options.messageGroupId || 'MESSAGE_GROUP',
+    MessageGroupId: options.messageGroupId || nanoid(),
     MessageSystemAttributes: options.messageSystemAttributes || []
   }
 

@@ -20,6 +20,7 @@ export default class SqsSdk extends AwsSqs {
             visibilityTimeout: number;
         }>;
         onRetryReject: (Message?: {}) => Promise<any>;
+        shouldReceiveMessages: (Message?: {}) => Promise<boolean>;
     });
     handlers: {
         processMessage: (Message?: {}) => Promise<any>;
@@ -28,6 +29,7 @@ export default class SqsSdk extends AwsSqs {
             visibilityTimeout: number;
         }>;
         onRetryReject: (Message?: {}) => Promise<any>;
+        shouldReceiveMessages: (Message?: {}) => Promise<boolean>;
     };
     send(messageBody: string, options: any): Promise<{
         MD5OfMessageBody?: string;
